@@ -1,19 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# Redis Tools
 
 import redis
 
-# Redis Tools
+class Redis:
 
-def init_redis():
-    redis_server = redis.StrictRedis(host='localhost', port=6379, db=0)
-    return redis_server
+    def get_conn(self):
 
-rds = init_redis()
-
-
-def get_count(pattern="*"):
-    """ 获取符合条件的key数目
-    """
-    rds = init_redis()
-    return len(rds.keys(pattern))
+        rdb = redis.StrictRedis(host='localhost', port=6379, db=0)
+        return rdb
