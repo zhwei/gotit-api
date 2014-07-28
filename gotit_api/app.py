@@ -3,8 +3,12 @@
 
 import tornado.ioloop
 import tornado.web
+from tornado.options import define, options
+import tornado.gen
 
 from libs import zfsoft
+
+define("port", default=1234, help="--port")
 
 class BaseRequestHandler(tornado.web.RequestHandler):
 
@@ -28,11 +32,15 @@ class APIBaseHandler(BaseRequestHandler):
 
 class MainHandler(BaseRequestHandler):
 
+
+    @tornado.gen.coroutine
     def get(self):
 
-        t = zfsoft.BaseRequest()
-        ret = t.get("www.baidu.com")
-        self.write(ret.text)
+        t = zfsoft.ZfSoft()
+        uid = yield t.pre_login()
+        self.write(uid)
+        self.finish()
+        return
 
 settings = dict(
     debug = True,
@@ -40,11 +48,11 @@ settings = dict(
 )
 
 application = tornado.web.Application([
-    (r"/", MainHandler),
-])
+        (r"/", MainHandler),
+    ], **settings)
 
 
 if __name__ == "__main__":
-    application.listen(8888)
-    print("listening http://0.0.0.0:8888")
+    application.listen(options.port)
+    print("listening http://0.0.0.0:{}".format(options.port))
     tornado.ioloop.IOLoop.instance().start()
