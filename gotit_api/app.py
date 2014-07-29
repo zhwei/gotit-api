@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import tornado.ioloop
-import tornado.web
-from tornado.options import define, options
 import tornado.gen
+import tornado.web
+import tornado.ioloop
+from tornado.options import define, options
 
 from libs import zfsoft
 
@@ -24,7 +24,6 @@ class APIBaseHandler(BaseRequestHandler):
 
         raise NotImplementedError
 
-
     def call(self):
 
         pass
@@ -37,10 +36,11 @@ class MainHandler(BaseRequestHandler):
     def get(self):
 
         t = zfsoft.ZfSoft()
-        uid = yield t.pre_login()
-        self.write(uid)
-        self.finish()
-        return
+        self.write(t.pre_login())
+        # uid = yield t.pre_login()
+        # self.write("hello world")
+        # self.finish()
+        # return
 
 settings = dict(
     debug = True,

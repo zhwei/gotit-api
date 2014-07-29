@@ -5,74 +5,23 @@ import time
 import base64
 import pickle
 import logging
-import requests
+import functools
 
-import tornado.gen
+import requests
 
 from gotit_api.libs import images
 from gotit_api.utils import exceptions
 from gotit_api.utils.redis2s import Redis
+from gotit_api.libs.base import BaseRequest
 from gotit_api.utils.utils import get_unique_key
 from gotit_api.utils.config_parser import get_config
-
-class BaseRequest:
-
-    headers = {
-            'Connection': 'Keep-Alive',
-            'User-Agent': ('Mozilla/5.0 (X11; Ubuntu; Linux i686;'
-                            'rv:18.0) Gecko/20100101 Firefox/18.0'),
-        }
-
-    site_name = None
-    cookies = None
-
-
-    def __init__(self, site_name=None):
-
-        self.site_name = site_name
-
-    def check_page(self, req_text):
-        """ 检查页面是否合理
-        如果不合理则抛出异常
-        :param req_text: utf-8 html content
-        :return: None
-        """
-        pass
-
-    def get(self, url, cookies=None, *args, **kwargs):
-
-        try:
-            _req = requests.get(url, cookies=cookies, *args, **kwargs)
-            self.cookies = cookies if cookies else _req.cookies
-        except requests.ConnectionError:
-            msg = 'Can Not Connect to {}'.format(self.site_name)
-            logging.error(msg)
-            raise exceptions.RequestError(msg)
-
-        self.check_page(_req.text)
-        return _req
-
-    def post(self, url, data, *args, **kwargs):
-
-        try:
-            _req = requests.post(url, data, cookies=self.cookies,
-                                 headers=self.headers, *args, **kwargs)
-        except requests.ConnectionError:
-            msg = 'Can Not Connect to {}'.format(self.site_name)
-            logging.error(msg)
-            raise exceptions.RequestError(msg)
-
-        self.check_page(_req.text)
-        return _req
-
-
-USER_RDS_PREFIX = "User:ZF:"
 
 
 class ZfSoft(BaseRequest):
 
     """ 正方教务系统相关
     """
+    site_name = "ZfSoft"
 
     def __init__(self, *args, **kwargs):
 
@@ -108,15 +57,20 @@ class ZfSoft(BaseRequest):
     def pre_login(self):
         """ 存在验证码时登录前的准备
         """
-        uid = get_unique_key(prefix=USER_RDS_PREFIX)
         self.token = self.__get_token(self.get(self.base_url).text)
-        # base64_image = images.get_base64_image(self.get(self.code_url).text)
-        _image = self.get(self.code_url).text
-        self.rds.hmset(uid, {       # cache in redis
-                "checkcode" : base64.b64encode(pickle.dumps(_image)),
-                "base_url"  : self.base_url,
-                "viewstate" : self.token,
-                'cookies'   : base64.b64encode(pickle.dumps(self.cookies)),
-            })
-        self.rds.pexpire(uid, 600000) # set expire time(milliseconds)
-        return uid
+        self._image = self.get(self.code_url).text
+        return self.dump_session(pre=True)
+
+
+    def dump_session(self, second=600, pre_login=False):
+
+        if pre_login:
+            uid = self.build_redis_key()
+            self.rds.hmset(uid, {       # cache in redis
+                    "token" : self.token,
+                    "base_url"  : self.base_url,
+                    "session" : pickle.dumps(self.req),
+                    "code" : base64.b64encode(pickle.dumps(self._image)),
+                })
+        else:
+            super(ZfSoft, self).dump_session()
