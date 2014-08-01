@@ -2,15 +2,48 @@
 # -*- coding: utf-8 -*-
 
 import os
+import base64
+import pickle
 import zipfile
 import logging
+import functools
 from io import StringIO
 from os.path import join
-
 
 from gotit_api.utils import exceptions
 from gotit_api.utils.redis2s import Redis
 
+
+def pickle_and_b64(s):
+    """ 序列化后base64编码
+    :param s:
+    :return:
+    """
+    return base64.b64encode(pickle.dumps(s))
+
+def unb64_and_unpickle(s):
+    """ base64解码后反序列化
+    :param s:
+    :return:
+    """
+
+    return pickle.loads(base64.b64decode(s))
+
+
+def singleton_func(func):
+    """实现函数返回值的单例"""
+    single = None
+
+    @functools.wraps(func)
+    def _wrapper(*args, **kwargs):
+        nonlocal single
+
+        if single is None:
+            single = func(*args, **kwargs)
+
+        return single
+
+    return _wrapper
 
 class PageAlert(object):
     """ 处理页面警告

@@ -1,38 +1,44 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import re
-import time
-import base64
 import pickle
 import logging
-import functools
 
 import requests
 
-from gotit_api.libs import images
 from gotit_api.utils import exceptions
 from gotit_api.utils.redis2s import Redis
-from gotit_api.utils.utils import get_unique_key
-from gotit_api.utils.config_parser import get_config
+from gotit_api.utils.helper import get_unique_key
 
 class BaseRequest:
-
+    """ 爬虫基类
+    一个可扩展请求的基类，要满足的条件：
+        + 满足需要登录的情形
+        + 对Session持久化
+        + 可扩展的异常处理
+    """
     site_name = "DEFAULT_SITE_NAME"     # 用于持久化等操作中的标志
-    headers = {
-            'Connection': 'Keep-Alive',
-            'User-Agent': ('Mozilla/5.0 (X11; Ubuntu; Linux i686;'
-                            'rv:18.0) Gecko/20100101 Firefox/18.0'),
-        }
+    logged = False
+    data = dict()
 
-    def __init__(self, site_name=None):
+    def __init__(self, uid=None, site_name=None):
         """ 初始化必要变量
         :param site_name: 站点名称， 英文
         :return: None
         """
-        if site_name: self.site_name = site_name
-
-        self.req = requests.Session()
-        self.req.headers.update(self.headers)
+        if uid:
+            self.load_session(uid)
+        else:
+            self.req = requests.Session()
+            __headers = {
+                'Connection': 'Keep-Alive',
+                'User-Agent': ('Mozilla/5.0 (X11; Ubuntu; Linux i686;'
+                                'rv:18.0) Gecko/20100101 Firefox/18.0'),
+            }
+            self.req.headers.update(__headers)
+            if site_name:
+                self.site_name = site_name
+            uid = self.build_redis_key()
+        self.uid = uid
 
     def check_page(self, req_text):
         """ 检查页面是否合理
@@ -92,18 +98,18 @@ class BaseRequest:
         :return: Redis中的key [string]
         """
         rds = Redis.get_conn()
-        key = self.build_redis_key()
-        rds.setex(key, pickle.dumps(self.req))
-        return key
+        self.data["session"] = pickle.dumps(self.req)
+        rds.hmset(self.uid, self.data)
+        return self.uid
 
-    def load_session(self, key):
+    def load_session(self, uid):
         """ 加载持久化的Session
         推荐重写此方法和dump_session()
-        :param key: Redis中的键值 [string]
+        :param uid: Redis中的键值 [string]
         :return: None
         """
         rds = Redis.get_conn()
-        _data = rds.get(key)
+        _data = rds.get(uid)
         if _data:
             self.req = pickle.loads(_data)
         else:

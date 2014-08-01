@@ -1,9 +1,6 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-
-
 from io import StringIO
 from PIL import Image, ImageDraw
-
 
 def process_image(image):
     """
@@ -40,7 +37,7 @@ def process_image_string(image):
     return content
 
 
-def get_base64_image(raw_content):
+def b64encode_image(raw_content):
     """ 获取图片Base64编码后的内容 """
     if isinstance(raw_content, bytes):
         raw_content = raw_content.decode()
