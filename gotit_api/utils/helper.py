@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import json
 import base64
 import pickle
 import zipfile
@@ -13,6 +14,20 @@ from os.path import join
 from gotit_api.utils import exceptions
 from gotit_api.utils.redis2s import Redis
 
+
+def json_dumps(s):
+    """ json dump
+    :param s:
+    :return:
+    """
+    return json.dumps(s, ensure_ascii=False)
+
+def json_loads(s):
+    """ json load
+    :param s:
+    :return:
+    """
+    return json.load(s)
 
 def pickle_and_b64(s):
     """ 序列化后base64编码

@@ -5,10 +5,14 @@ import base64
 import pickle
 from urllib.parse import urlparse
 
+import lxml.etree as lxml_etree
+
 from gotit_api.utils import exceptions
 from gotit_api.utils.redis2s import Redis
 from gotit_api.libs.base import BaseRequest
 from gotit_api.utils.config_parser import get_config
+from gotit_api.utils.factory import (TimeTableJsonFactory,
+                                     ScoreJsonFactory)
 
 VIEW_STATE_PAR = re.compile(r'name="__VIEWSTATE" value="(.*?)"')
 
@@ -128,28 +132,96 @@ class ZfSoft(BaseRequest):
             super(ZfSoft, self).load_session(uid)
         self.__process_url()  # 根据上面获取到的base_url获取其他url
 
-
     def login_without_verify(self, post_content):
         """ 无验证码登录接口
         :return:
         """
         self.xh = post_content.get('xh')
-        self.pw = post_content.get('pw')
+        __pw = post_content.get('pw')
         self.__process_url(init=True, login_postfix="default6.aspx")
         _token = self.__get_token(self.get(self.login_url).text)
         data = dict(tname='', tbtns='', tnameXw='yhdl',
                     tbtnsXw='yhdl|xwxsdl', tbtnsXm='', rblJs="学生",
-                    txtYhm=self.xh, txtMm=self.pw,
+                    txtYhm=self.xh, txtMm=__pw,
                     __VIEWSTATE=_token, btnDl='登 录')
-        ret = self.post(url=self.login_url, data=data)    # 登录请求
-        print(ret.text)
+        self.post(url=self.login_url, data=data)    # 登录请求
         self.dump_session()
         return self.uid
 
-    def get_content_by_year(self, fy, ty, term):
+    def another_request(self,url ,data=None):
+        """ 用于登录后的请求操作
+        :param url: 请求url
+        :param data: 发送的数据，如果为空则使用get，不为空使用post
+                    不需要传送 `__VIEWSTATE`参数
+        :return: 页面内容 string
+        """
+        if data:
+            token = self.__get_token(self.get(url).text)
+            data["__VIEWSTATE"] = token
+            ret = self.post(url, data)
+        else:
+            ret = self.get(url)
+        return ret.text
+
+    def get_timetable_by_year(self, fy=None, ty=None, term="1", default=False):
         """ 按照给定学年，学期抓取信息
         :param fy: 开始学年
         :param ty: 结束学年
         :param term: 第几学期
         :return:
         """
+        url = self.base_url + 'xskbcx' + ".aspx?xh=" + self.xh
+        if default:     # 返回默认内容
+            html = self.another_request(url)
+        else:
+            data = dict(__EVENTTARGET="xqd", __EVENTARGUMENT="",
+                        xnd='{0}-{1}'.format(fy, ty),
+                        xqd="{0}".format(term))
+            html = self.another_request(url, data)
+        tree = lxml_etree.HTML(html)
+        normal_table = tree.xpath("//table[@id='Table1']")[0]
+        other_1 = tree.xpath("//table[@id='DBGrid']")[0]
+        other_2 = tree.xpath("//table[@id='Table3']")[0]
+        for i in (normal_table, other_1, other_2):
+            yield lxml_etree.tostring(i)
+
+    def get_score_by_year(self, fy=None, ty=None, term="1", default=False):
+        """ 按学年获取成绩内容
+        :param fy:
+        :param ty:
+        :param term:
+        :return:
+        """
+        url = self.base_url + 'xscjcx_dq' + ".aspx?xh=" + self.xh
+        if default:     # 返回默认内容
+            html = self.another_request(url)
+        else:
+            data = dict(__EVENTTARGET="", __EVENTARGUMENT="",
+                        ddlxn='{0}-{1}'.format(fy, ty),
+                        ddlxq="{0}".format(term), btnCx=" 查  询 ")
+            html = self.another_request(url, data)
+        tree = lxml_etree.HTML(html)
+        normal_table = tree.xpath("//table[@id='DataGrid1']")[0]
+        for i in (normal_table,):
+            yield lxml_etree.tostring(i)
+
+    def gen_timetable_json(self, html_body):
+        """ 生成课表json
+        :param html_body:
+        :return:
+        """
+        k = TimeTableJsonFactory(html_body)
+        return k.get_json()
+
+    def gen_score_json(self, html_body):
+        """ 生成成绩json
+        :param html_body:
+        :return:
+        """
+        return ScoreJsonFactory.get_list(html_body)
+
+    def get_default(self):
+
+        ret = self.get_score_by_year(default=True)
+        kj = self.gen_score_json(next(ret))
+        return [kj,]

@@ -65,7 +65,7 @@ class BaseRequest:
         :return:
         """
         _req = requests.Request("POST", url,
-                                self.req.headers,
+                                headers=self.req.headers,
                                 data=data)
         prepped = _req.prepare()
         return self.do_request(prepped)

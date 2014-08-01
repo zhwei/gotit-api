@@ -31,10 +31,13 @@ class APIBaseHandler(BaseRequestHandler):
 class MainHandler(BaseRequestHandler):
 
     def get(self):
-
+        from gotit_api.utils.helper import json_dumps
         t = zfsoft.ZfSoft()
-        uid = t.login_without_verify({"xh":"1111051046","pw":"zhejiushimima"})
-        self.write(uid)
+        t.login_without_verify({"xh":"","pw":""})
+        content = t.get_default()
+        self.write(json_dumps(content))
+        # for i in content:
+        #     self.write(i)
 
 
 settings = dict(
