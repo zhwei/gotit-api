@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import base64
 import pickle
 import logging
 
@@ -114,3 +115,13 @@ class BaseRequest(object):
             self.req = pickle.loads(_data)
         else:
             raise Exception("Can not load from redis")
+
+    def get_b64_image(self, code_url):
+        """ 获取经过Base64转码后的图片
+        返回结果可以直接在浏览器地址栏中打开
+        :return:
+        """
+        ver_code = self.get(code_url).content      # 获取图片
+        ver_code = base64.b64encode(ver_code).decode().replace('\n', '')
+        ver_code = "data:image/gif\;base64,{}".format(ver_code)
+        return ver_code

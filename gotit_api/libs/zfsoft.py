@@ -71,9 +71,7 @@ class ZfSoft(BaseRequest):
         """
         self.__process_url(True)  # 获取base_url, 处理获取其他相关url
         self.token = self.__get_token(self.get(self.base_url).text)
-        ver_code = self.get(self.code_url).content      # 获取验证码图片
-        ver_code = base64.b64encode(ver_code).decode().replace('\n', '')
-        ver_code = "data:image/gif\;base64,{}".format(ver_code)
+        ver_code = self.get_b64_image(self.code_url)
         return self.dump_session(checkcode=ver_code)
 
     def do_login(self, post_content):
