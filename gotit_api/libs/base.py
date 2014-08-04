@@ -9,7 +9,7 @@ from gotit_api.utils import exceptions
 from gotit_api.utils.redis2s import Redis
 from gotit_api.utils.helper import get_unique_key
 
-class BaseRequest:
+class BaseRequest(object):
     """ 爬虫基类
     一个可扩展请求的基类，要满足的条件：
         + 满足需要登录的情形

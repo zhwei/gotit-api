@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
+import time
 
+import requests
 import tornado.gen
 import tornado.web
 import tornado.ioloop
+import tornado.httpserver
+import tornado.httpclient
 from tornado.options import define, options
 
 from gotit_api.libs import zfsoft
@@ -30,14 +34,28 @@ class APIBaseHandler(BaseRequestHandler):
 
 class MainHandler(BaseRequestHandler):
 
+
+    @tornado.gen.coroutine
     def get(self):
-        from gotit_api.utils.helper import json_dumps
+
+        self.write("hello")
         t = zfsoft.ZfSoft()
-        t.login_without_verify({"xh":"","pw":""})
-        content = t.get_default()
-        self.write(json_dumps(content))
-        # for i in content:
-        #     self.write(i)
+        t.login_without_verify({"xh":"1111051046","pw":"zhejiushimima"})
+        content = yield tornado.gen.Task(t.get_default)
+
+
+class TestHandler(BaseRequestHandler):
+
+    def test(self, callback):
+
+        time.sleep(2)
+        callback("ok")
+
+    @tornado.gen.coroutine
+    def get(self):
+
+        s = yield tornado.gen.Task(self.test)
+        self.write(s)
 
 
 settings = dict(
@@ -45,11 +63,20 @@ settings = dict(
     autoreload=True,
 )
 
+from gotit_api.handlers.basehandler import APIBaseHandler
+
 application = tornado.web.Application([
                                           (r"/", MainHandler),
+                                          (r"/base", APIBaseHandler),
+                                          (r"/test", TestHandler),
                                       ], **settings)
 
-if __name__ == "__main__":
-    application.listen(options.port)
+def main():
+    tornado.options.parse_command_line()
+    http_server = tornado.httpserver.HTTPServer(application)
+    http_server.listen(options.port)
     print("listening http://0.0.0.0:{}".format(options.port))
     tornado.ioloop.IOLoop.instance().start()
+
+if __name__ == "__main__":
+    main()

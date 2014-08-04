@@ -5,14 +5,17 @@ import base64
 import pickle
 from urllib.parse import urlparse
 
+import tornado.gen
+from tornado.ioloop import IOLoop
+from tornado.concurrent import return_future
 import lxml.etree as lxml_etree
 
 from gotit_api.utils import exceptions
 from gotit_api.utils.redis2s import Redis
 from gotit_api.libs.base import BaseRequest
 from gotit_api.utils.config_parser import get_config
-from gotit_api.utils.factory import (TimeTableJsonFactory,
-                                     ScoreJsonFactory)
+# from gotit_api.utils.factory import (TimeTableJsonFactory,
+#                                      ScoreJsonFactory)
 
 VIEW_STATE_PAR = re.compile(r'name="__VIEWSTATE" value="(.*?)"')
 
@@ -26,6 +29,10 @@ class ZfSoft(BaseRequest):
     base_url = None
     site_name = "ZfSoft"
     rds = Redis.get_conn()
+
+    # def __init__(self, io_loop=None, **kwargs):
+    #     super(ZfSoft, self).__init__(**kwargs)
+    #     self.io_loop = io_loop or IOLoop.current()
 
     def __process_url(self, init=False, login_postfix=None):
         """ 处理相关url
@@ -202,26 +209,30 @@ class ZfSoft(BaseRequest):
             html = self.another_request(url, data)
         tree = lxml_etree.HTML(html)
         normal_table = tree.xpath("//table[@id='DataGrid1']")[0]
-        for i in (normal_table,):
-            yield lxml_etree.tostring(i)
+        # for i in (normal_table,):
+        #     yield lxml_etree.tostring(i)
+        return lxml_etree.tostring(normal_table)
 
     def gen_timetable_json(self, html_body):
         """ 生成课表json
         :param html_body:
         :return:
         """
-        k = TimeTableJsonFactory(html_body)
-        return k.get_json()
+        # k = TimeTableJsonFactory(html_body)
+        # return k.get_json()
 
     def gen_score_json(self, html_body):
         """ 生成成绩json
         :param html_body:
         :return:
         """
-        return ScoreJsonFactory.get_list(html_body)
+        # return ScoreJsonFactory.get_list(html_body)
 
-    def get_default(self):
+    # @return_future
+    # @tornado.gen.coroutine
+    def get_default(self, callback=None):
 
-        ret = self.get_score_by_year(default=True)
-        kj = self.gen_score_json(next(ret))
-        return [kj,]
+        # response = self.get_score_by_year(default=True)
+        response = self.get("http://baidu.com").text
+
+        return callback(response)
