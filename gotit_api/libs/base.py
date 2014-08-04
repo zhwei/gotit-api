@@ -16,6 +16,7 @@ class BaseRequest(object):
         + 满足需要登录的情形
         + 对Session持久化
         + 可扩展的异常处理
+        + 验证码处理
     """
     site_name = "DEFAULT_SITE_NAME"     # 用于持久化等操作中的标志
     logged = False
